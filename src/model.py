@@ -337,6 +337,27 @@ class Player:
         
         return players
 
+    @staticmethod
+    def get_by_country():
+        """从视图players_by_country中获取按国家分组的选手信息"""
+        db = DatabaseConnector()
+        query = "SELECT player_id, nickname, country, team_name, team_country FROM players_by_country"
+        rows = db.execute_query(query)
+        db.disconnect()
+        
+        players = []
+        if rows:
+            for row in rows:
+                players.append({
+                    'player_id': row['player_id'],
+                    'nickname': row['nickname'],
+                    'country': row['country'],
+                    'team_name': row['team_name'],
+                    'team_country': row['team_country']
+                })
+        
+        return players
+
 
 class Tournament:
     """赛事模型类，处理与tournaments表相关的操作"""

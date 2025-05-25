@@ -31,6 +31,7 @@ class CS2EventApp:
         self.create_players_page()
         self.create_tournaments_page()
         self.create_matches_page()
+        self.create_players_by_country_page()
         
         # 初始化状态栏
         self.status_var = tk.StringVar()
@@ -641,6 +642,84 @@ class CS2EventApp:
         self.load_filter_options()
         self.refresh_matches()
     
+    def create_players_by_country_page(self):
+        players_by_country_frame = ttk.Frame(self.notebook)
+        self.notebook.add(players_by_country_frame, text="按国家查询选手")
+        
+        # 创建分栏布局
+        paned = ttk.PanedWindow(players_by_country_frame, orient=tk.HORIZONTAL)
+        paned.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # 左侧国家列表
+        left_frame = ttk.Frame(paned)
+        paned.add(left_frame, weight=1)
+        
+        # 搜索框
+        search_frame = ttk.Frame(left_frame)
+        search_frame.pack(fill=tk.X, padx=5, pady=5)
+        ttk.Label(search_frame, text="搜索:").pack(side=tk.LEFT, padx=5)
+        self.country_search_var = tk.StringVar()
+        self.country_search_entry = ttk.Entry(search_frame, textvariable=self.country_search_var)
+        self.country_search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        ttk.Button(search_frame, text="搜索", command=self.search_players_by_country).pack(side=tk.LEFT, padx=5)
+        
+        # 国家列表
+        list_frame = ttk.Frame(left_frame)
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # 创建滚动条
+        scrollbar = ttk.Scrollbar(list_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # 创建树状表格
+        self.countries_tree = ttk.Treeview(list_frame, yscrollcommand=scrollbar.set)
+        self.countries_tree["columns"] = ("country", "player_id", "nickname", "team_name", "team_country")
+        self.countries_tree.column("#0", width=0, stretch=tk.NO)
+        self.countries_tree.column("country", width=100, anchor=tk.CENTER)
+        self.countries_tree.column("player_id", width=50, anchor=tk.CENTER)
+        self.countries_tree.column("nickname", width=120)
+        self.countries_tree.column("team_name", width=120)
+        self.countries_tree.column("team_country", width=120)
+        
+        self.countries_tree.heading("#0", text="")
+        self.countries_tree.heading("country", text="国家/地区")
+        self.countries_tree.heading("player_id", text="ID")
+        self.countries_tree.heading("nickname", text="游戏ID")
+        self.countries_tree.heading("team_name", text="战队")
+        self.countries_tree.heading("team_country", text="战队国家")
+        
+        self.countries_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.config(command=self.countries_tree.yview)
+        
+        # 加载数据
+        self.refresh_players_by_country()
+
+    def refresh_players_by_country(self):
+        # 从数据库视图中获取数据
+        players_by_country = model.Player.get_by_country()
+        self.update_countries_tree(players_by_country)
+
+    def update_countries_tree(self, players_by_country):
+        # 清空树
+        for item in self.countries_tree.get_children():
+            self.countries_tree.delete(item)
+        
+        # 添加数据
+        for player in players_by_country:
+            self.countries_tree.insert("", tk.END, values=(player['country'], player['player_id'], player['nickname'], player['team_name'], player['team_country']))
+            # print(player)
+    def search_players_by_country(self):
+        """根据搜索框内容筛选选手"""
+        keyword = self.country_search_var.get().strip()
+        if keyword:
+            players_by_country = [
+                player for player in model.Player.get_by_country()
+                if keyword.lower() in player['country'].lower() or keyword.lower() in player['nickname'].lower()
+            ]
+        else:
+            players_by_country = model.Player.get_by_country()
+        self.update_countries_tree(players_by_country)
+        
     # 战队相关方法
     def search_teams(self):
         keyword = self.team_search_var.get()

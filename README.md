@@ -3,6 +3,8 @@
 
 在 MySQL 环境中使用`/database/cs2_event.sql`创建数据库，并且内置了部分数据。
 
+创建视图使用`/database/search.sql`创建。
+
 可视化界面使用命令
 ```python
 python app.py

@@ -11,7 +11,7 @@
  Target Server Version : 80041 (8.0.41)
  File Encoding         : 65001
 
- Date: 24/05/2025 17:41:57
+ Date: 25/05/2025 17:49:33
 */
 
 SET NAMES utf8mb4;
@@ -34,7 +34,7 @@ CREATE TABLE `map_matches`  (
   INDEX `winner_id`(`winner_id` ASC) USING BTREE,
   CONSTRAINT `map_matches_ibfk_1` FOREIGN KEY (`match_id`) REFERENCES `matches` (`match_id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `map_matches_ibfk_2` FOREIGN KEY (`winner_id`) REFERENCES `teams` (`team_id`) ON DELETE SET NULL ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 17 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 19 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of map_matches
@@ -43,7 +43,7 @@ INSERT INTO `map_matches` VALUES (1, 1, 'Inferno', 3, 2, 13, 1);
 INSERT INTO `map_matches` VALUES (2, 1, 'Dust2', 1, 16, 12, 2);
 INSERT INTO `map_matches` VALUES (3, 1, 'Train', 4, 9, 13, 1);
 INSERT INTO `map_matches` VALUES (4, 1, 'Mirage', 2, 13, 10, 2);
-INSERT INTO `map_matches` VALUES (16, 1, 'Nuke', 5, 20, 22, 2);
+INSERT INTO `map_matches` VALUES (18, 1, 'Nuke', 5, 20, 22, 1);
 
 -- ----------------------------
 -- Table structure for matches
@@ -75,7 +75,7 @@ CREATE TABLE `matches`  (
 -- ----------------------------
 -- Records of matches
 -- ----------------------------
-INSERT INTO `matches` VALUES (1, 1, 2, 1, '2025-04-27', '05:00:00', 'BO5', '已结束', NULL, 0, 0);
+INSERT INTO `matches` VALUES (1, 1, 2, 1, '2025-04-27', '05:00:00', 'BO5', '已结束', 1, 2, 3);
 
 -- ----------------------------
 -- Table structure for players
@@ -162,19 +162,25 @@ CREATE TABLE `tournaments`  (
 INSERT INTO `tournaments` VALUES (1, 'IEM Melbourne 2025', '2025-04-21', '2025-04-27', '澳大利亚，墨尔本', '$1,000,000', '已结束');
 
 -- ----------------------------
+-- View structure for players_by_country
+-- ----------------------------
+DROP VIEW IF EXISTS `players_by_country`;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `players_by_country` AS select `p`.`player_id` AS `player_id`,`p`.`nickname` AS `nickname`,`p`.`country` AS `country`,`t`.`team_name` AS `team_name`,`t`.`country` AS `team_country` from (`players` `p` left join `teams` `t` on((`p`.`team_id` = `t`.`team_id`))) order by `p`.`country`;
+
+-- ----------------------------
 -- Procedure structure for update_match_result
 -- ----------------------------
 DROP PROCEDURE IF EXISTS `update_match_result`;
 delimiter ;;
 CREATE PROCEDURE `update_match_result`(IN p_match_id INT)
 BEGIN
-    DECLARE team1_id INT;
-    DECLARE team2_id INT;
+    DECLARE Team1_id INT;
+    DECLARE Team2_id INT;
     DECLARE match_format VARCHAR(10);
     DECLARE team1_wins INT;
     DECLARE team2_wins INT;
     DECLARE required_wins INT;
-    DECLARE winner_id INT DEFAULT NULL;
+    DECLARE Winner_id INT DEFAULT NULL;
     
     -- 获取比赛信息
     SELECT m.team1_id, m.team2_id, m.format
@@ -184,12 +190,12 @@ BEGIN
     
     -- 计算每队获胜地图数
     SELECT COUNT(*) INTO team1_wins
-    FROM map_matches
-    WHERE match_id = p_match_id AND winner_id = team1_id;
+    FROM map_matches m
+    WHERE match_id = p_match_id AND m.winner_id = Team1_id;
     
     SELECT COUNT(*) INTO team2_wins
-    FROM map_matches
-    WHERE match_id = p_match_id AND winner_id = team2_id;
+    FROM map_matches m
+    WHERE match_id = p_match_id AND m.winner_id = Team2_id;
     
     -- 确定需要的获胜地图数
     IF match_format = 'BO1' THEN
@@ -204,9 +210,9 @@ BEGIN
     
     -- 确定总获胜者
     IF team1_wins >= required_wins THEN
-        SET winner_id = team1_id;
+        SET Winner_id = Team1_id;
     ELSEIF team2_wins >= required_wins THEN
-        SET winner_id = team2_id;
+        SET Winner_id = Team2_id;
     END IF;
     
     -- 更新比赛结果
@@ -214,14 +220,15 @@ BEGIN
         UPDATE matches
         SET score_team1 = team1_wins,
             score_team2 = team2_wins,
-            winner_id = winner_id,
+            winner_id = Winner_id,
             status = '已结束'
         WHERE match_id = p_match_id;
     ELSE
         -- 只更新当前比分
         UPDATE matches
         SET score_team1 = team1_wins,
-            score_team2 = team2_wins
+            score_team2 = team2_wins,
+            status = '进行中'
         WHERE match_id = p_match_id;
     END IF;
 END
